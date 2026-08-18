@@ -1,0 +1,32 @@
+[
+  {
+    "id": "gs-001",
+    "task_kind": "writing_t2",
+    "prompt": "Some people believe that unpaid community service should be a compulsory part of high school programmes. To what extent do you agree or disagree?",
+    "essay": "TO'LIQ ESSE MATNI shu yerda...",
+    "true_overall": 6.0,
+    "true_criteria": {"TA": 6.0, "CC": 6.0, "LR": 6.5, "GRA": 5.5},
+    "rater": "examiner_A",
+    "rater_2": "examiner_B",
+    "rater_2_overall": 6.0,
+    "notes": "Ikki tekshiruvchi kelishdi."
+  },
+  {
+    "id": "gs-002",
+    "task_kind": "writing_t2",
+    "prompt": "Some experts believe that it is better for children to begin learning a foreign language at primary school rather than secondary school. Do the advantages outweigh the disadvantages?",
+    "essay": "TO'LIQ ESSE MATNI...",
+    "true_overall": 5.0,
+    "true_criteria": {"TA": 5.0, "CC": 5.0, "LR": 5.0, "GRA": 4.5},
+    "rater": "examiner_A"
+  },
+  {
+    "id": "gs-003",
+    "task_kind": "writing_t1_academic",
+    "prompt": "The chart below shows the number of men and women in further education in Britain in three periods.",
+    "essay": "TO'LIQ ESSE MATNI...",
+    "true_overall": 7.5,
+    "true_criteria": {"TA": 7.5, "CC": 8.0, "LR": 7.0, "GRA": 7.5},
+    "rater": "examiner_B"
+  }
+]

@@ -1,0 +1,34 @@
+{
+  "writing_t2": [
+    {
+      "id": "anchor-t2-b5",
+      "text": "TO'LIQ ESSE MATNI — band 5 darajasidagi haqiqiy talaba ishi.",
+      "criteria": {"TA": 5.0, "CC": 5.0, "LR": 5.0, "GRA": 5.0},
+      "notes": {
+        "TA": "Savolning ikkinchi qismiga javob bermagan, pozitsiya noaniq.",
+        "CC": "Paragraflash yo'q, bog'lovchilar takrorlanadi.",
+        "LR": "Juda cheklangan lug'at, so'z takrori ko'p.",
+        "GRA": "Sodda gaplar, artikl va zamon xatolari chastotali."
+      }
+    },
+    {
+      "id": "anchor-t2-b6",
+      "text": "TO'LIQ ESSE MATNI — band 6.",
+      "criteria": {"TA": 6.0, "CC": 6.0, "LR": 6.0, "GRA": 6.0},
+      "notes": {"CC": "Mexanik bog'lovchilar: Firstly / Secondly / In conclusion."}
+    },
+    {
+      "id": "anchor-t2-b7",
+      "text": "TO'LIQ ESSE MATNI — band 7.",
+      "criteria": {"TA": 7.0, "CC": 7.0, "LR": 7.0, "GRA": 7.0},
+      "notes": {"LR": "Kollokatsiyalar tabiiy, ba'zi noaniq so'z tanlashlar."}
+    },
+    {
+      "id": "anchor-t2-b8",
+      "text": "TO'LIQ ESSE MATNI — band 8.",
+      "criteria": {"TA": 8.0, "CC": 8.0, "LR": 8.0, "GRA": 8.0},
+      "notes": {"GRA": "Gaplarning aksariyati xatosiz, keng diapazon."}
+    }
+  ],
+  "writing_t1_academic": []
+}

@@ -1,0 +1,19 @@
+# Kesh — hech qanday keshlangan LLM javobi repo'ga tushmasin
+cache/*
+!cache/.gitkeep
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# data/ ichidagi barcha JSON'lar ignore, .example.json bundan mustasno
+# (golden_set.json, anchors.json, last_run.json, calibration.json va h.k.
+#  — bularda haqiqiy esse matnlari / bahoyi bor, repo'ga tushmasligi kerak)
+data/*.json
+!data/*.example.json
+
+# API kalitlari / mahalliy sozlamalar
+.env
+.env.*
