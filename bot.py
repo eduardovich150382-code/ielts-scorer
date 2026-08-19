@@ -10,14 +10,10 @@ Ishga tushirish: `.env.example`ni `.env`ga nusxalab to'ldiring, so'ng
 """
 from __future__ import annotations
 
-from dotenv import load_dotenv
-
-# MUST run before importing db/scorer/llm/config — config.py o'qiydigan
-# LLM_PROVIDER/SCORER_MODEL kabi o'zgaruvchilar modul IMPORT vaqtida (bir
-# marta) o'qiladi. Agar bu chaqiruv main() ichida (kech) bo'lsa, .env hali
-# yuklanmagan bo'ladi va LLM_PROVIDER har doim standart "anthropic"ga
-# tushib qoladi — .env'dagi LLM_PROVIDER=gemini e'tiborsiz qoladi.
-load_dotenv()
+# Eslatma: .env config.py import qilinganda avtomatik yuklanadi (config.py
+# ning o'zida load_dotenv() bor) — bu yerda alohida chaqirish shart emas.
+# scorer.py (pastda import qilinadi) -> llm.py -> config.py zanjiri buni
+# ta'minlaydi, `main()`dagi os.environ["BOT_TOKEN"] kabi o'qishlardan oldin.
 
 import asyncio
 import logging

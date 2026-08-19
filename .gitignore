@@ -8,10 +8,12 @@ __pycache__/
 .venv/
 venv/
 
-# data/ ichidagi barcha JSON'lar ignore, .example.json bundan mustasno
-# (golden_set.json, anchors.json, last_run.json, calibration.json va h.k.
-#  — bularda haqiqiy esse matnlari / bahoyi bor, repo'ga tushmasligi kerak)
+# data/ ichidagi barcha JSON/JSONL ignore, .example.json bundan mustasno
+# (golden_set.json, anchors.json, calibration.json, calibration_history.jsonl
+#  va h.k. — bularda haqiqiy esse matnlari / bahoyi bor, repo'ga tushmasligi
+#  kerak). .jsonl alohida yozilgan — data/*.json glob'i .jsonl'ga mos kelmaydi.
 data/*.json
+data/*.jsonl
 !data/*.example.json
 
 # API kalitlari / mahalliy sozlamalar (.env.example bundan mustasno — u shablon,

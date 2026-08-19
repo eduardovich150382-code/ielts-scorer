@@ -3,6 +3,18 @@ from __future__ import annotations
 
 import os
 
+from dotenv import load_dotenv
+
+# Bu yerda, boshqa hamma narsadan OLDIN — quyidagi os.getenv() chaqiruvlari
+# shu modul IMPORT qilinganda (bir marta) baholanadi. Agar .env faqat
+# alohida entrypoint'da (masalan bot.py'ning o'zida) yuklansa, ikkinchi bir
+# entrypoint (calibrate.py, test_offline.py, ...) buni unutib qo'ysa —
+# LLM_PROVIDER/model nomlari sukut bo'yicha noto'g'ri qiymatga tushib qoladi
+# (bu aynan sodir bo'lgan bug edi). Markazlashtirilgan bu yerda hal qilinadi;
+# .env yo'q bo'lsa yoki mavjud OS env-var ustunlik qilsa — load_dotenv() hech
+# narsani bekor qilmaydi (default: override=False).
+load_dotenv()
+
 # ---------------------------------------------------------------- versiyalash
 # ⚠ Har qanday prompt/rubrika/model o'zgarishida SCORER_VERSION ni oshiring.
 # Busiz kalibrlash ma'nosiz bo'lib qoladi (02-hujjat, evaluations.model_version).
