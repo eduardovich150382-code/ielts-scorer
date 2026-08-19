@@ -12,20 +12,75 @@ scorer.py       Asosiy pipeline (3 bosqich)
 calibration.py  Post-hoc mapping: fit / apply / save
 metrics.py      MAE, ±0.5, ±1.0, QWK, bias, band bo'yicha taqsimot
 calibrate.py    CLI: evaluate / fit / gate / history
-test_offline.py 55 ta test — API kalitisiz ishlaydi
+test_offline.py 59 ta test — API kalitisiz ishlaydi
+
+--- Faza 0: Telegram bot (docs/01-mvp-prd.md) ---
+bot.py          Bot entrypoint: handlerlar, onboarding, /submit, esse oqimi
+db.py           Postgres qatlami (xom SQL, ORM yo'q)
+schema.sql      DDL: users, essay_submissions, events
+prompts_bank.py 18 ta original Task 2 savol
+ocr.py          Rasm→matn (pytesseract, gracefully degrade)
+scheduler.py    Kunlik 19:00 (Asia/Tashkent) nudge
+texts.py        uz/ru UI matnlari
 ```
 
 ## O'rnatish
 
 ```bash
 pip install -r requirements.txt
-export ANTHROPIC_API_KEY=sk-...
+
+# LLM provayder: Anthropic (standart) yoki Gemini — birini tanlang.
+export LLM_PROVIDER=anthropic  # yoki: gemini
+export ANTHROPIC_API_KEY=sk-...   # LLM_PROVIDER=anthropic bo'lsa
+export GEMINI_API_KEY=...         # LLM_PROVIDER=gemini bo'lsa
 
 cp data/golden_set.example.json data/golden_set.json
 cp data/anchors.example.json    data/anchors.json
 
-python test_offline.py       # API'siz mantiqiy testlar (55 ta)
+python test_offline.py       # API'siz mantiqiy testlar (59 ta)
 ```
+
+**Ikkita provayder qo'llab-quvvatlanadi** (`llm.py`): `LLM_PROVIDER=gemini`
+bo'lsa `google-genai` SDK orqali Gemini ishlatiladi (`response_json_schema`
+bilan JSON majburlanadi), aks holda Anthropic (tool-use JSON). Kesh, retry,
+xarajat hisobi (`TRACKER`) — ikkalasida ham bir xil ishlaydi. Standart model
+nomlari va narxlar `config.py`dagi `_DEFAULT_MODELS`/`PRICING`da — Gemini
+model nomlarini `genai.Client().models.list()` bilan davriy tasdiqlab turing
+(Google nomlarni o'zgartirib turadi).
+
+> ⚠️ **Gemini bepul (free tier) kalitida**: Pro darajadagi modellar
+> (`gemini-pro-latest`) kvotasi **0** — chaqiruv `429 RESOURCE_EXHAUSTED`
+> bilan qulaydi (amalda tekshirilgan). Standart shuning uchun
+> `gemini-flash-lite-latest`ga o'rnatilgan — bepul tarifda ishonchli
+> ishlaydi (real `score_essay()` chaqiruvi bilan tasdiqlangan). Pullik
+> Gemini rejasiga o'tsangiz, `SCORER_MODEL=gemini-pro-latest` va
+> `ANNOTATE_MODEL=gemini-pro-latest` bilan sifatliroq modelga o'ting.
+
+## Telegram bot (Faza 0)
+
+Minimal MVP bot — `/start` (til+maqsad band+imtihon sana) → Task 2 savoli →
+esse (matn/rasm) → `score_essay()` bilan baholash → band+top-5 xato → kuniga
+1 bepul limit → paywall tugmasi (click log) → kunlik 19:00 eslatma.
+To'liq scope: `docs/01-mvp-prd.md` ("FAZA 0").
+
+```bash
+pip install -r requirements.txt        # aiogram, psycopg, apscheduler, ...
+
+cp .env.example .env                    # BOT_TOKEN, LLM_PROVIDER, ANTHROPIC_API_KEY/GEMINI_API_KEY, DATABASE_URL
+
+docker compose up -d                    # mahalliy Postgres (yoki Neon/Supabase DSN)
+
+python bot.py
+```
+
+- `BOT_TOKEN` — [@BotFather](https://t.me/BotFather)'dan (`/newbot`).
+- Rasm orqali esse yuborish uchun VPS'da Tesseract kerak
+  (`apt-get install tesseract-ocr tesseract-ocr-eng`) — o'rnatilmagan bo'lsa
+  bot xato bermaydi, faqat OCR o'chirilgan holda matn bilan ishlayveradi
+  (`ocr.py`, `OCR_AVAILABLE`).
+- `data/anchors.json`/`data/golden_set.json` yo'q bo'lsa ham bot ishlaydi,
+  faqat baholash sifati (anchor'siz) pastroq bo'ladi — yuqoridagi
+  `O'rnatish` bo'limidagi `cp ...` buyruqlarini bajarishni unutmang.
 
 ## Ish tartibi (03-hujjat, §7)
 

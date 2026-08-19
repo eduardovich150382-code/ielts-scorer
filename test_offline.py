@@ -276,6 +276,77 @@ check("atrofdagi matn",
 check("ichma-ich obyekt",
       _extract_json('{"a":{"b":{"c":1}}}')["a"]["b"]["c"] == 1)
 
+# ============================================================ 9. LLM PROVIDER
+print("\n[9] LLM provider tanlash (pluggable)")
+
+import llm as L
+import config as C
+from pathlib import Path as _Path
+
+_orig_provider = C.LLM_PROVIDER
+_orig_call_anthropic = L._call_anthropic
+_orig_call_gemini = L._call_gemini
+
+
+def _fake_anthropic(system, user, model, schema, max_tokens, temperature):
+    return ({"band": 6.5}, 100, 50, "raw-anthropic")
+
+
+def _fake_gemini(system, user, model, schema, max_tokens, temperature):
+    return ({"band": 7.0}, 80, 40, "raw-gemini")
+
+
+L._call_anthropic = _fake_anthropic
+L._call_gemini = _fake_gemini
+_written_keys: list[str] = []
+
+try:
+    calls_before = L.TRACKER.calls
+
+    C.LLM_PROVIDER = "anthropic"
+    r1 = L.call_json("sys-9a", "user-9a", model="claude-sonnet-5",
+                      schema={"type": "object"}, use_cache=False)
+    check("anthropic provider -> _call_anthropic ishlatiladi",
+          r1.data["band"] == 6.5 and r1.input_tokens == 100 and r1.model == "claude-sonnet-5")
+
+    C.LLM_PROVIDER = "gemini"
+    r2 = L.call_json("sys-9b", "user-9b", model="gemini-pro-latest",
+                      schema={"type": "object"}, use_cache=False)
+    check("gemini provider -> _call_gemini ishlatiladi",
+          r2.data["band"] == 7.0 and r2.input_tokens == 80 and r2.model == "gemini-pro-latest")
+
+    check("TRACKER ikkala chaqiruvni ham hisoblagan",
+          L.TRACKER.calls == calls_before + 2)
+
+    # Kesh yo'li buzilmaganini tekshirish: bir xil (system,user,model,schema)
+    # + temperature=0.0 bo'lsa, ikkinchi chaqiruv tarmoqqa chiqmaydi.
+    C.LLM_PROVIDER = "anthropic"
+    hit_count = {"n": 0}
+
+    def _counting_anthropic(*a, **kw):
+        hit_count["n"] += 1
+        return _fake_anthropic(*a, **kw)
+
+    L._call_anthropic = _counting_anthropic
+    cache_schema = {"type": "object"}
+    key = L._cache_key("sys-9c", "user-9c", "claude-sonnet-5", cache_schema)
+    _written_keys.append(key)
+
+    r3 = L.call_json("sys-9c", "user-9c", model="claude-sonnet-5",
+                      schema=cache_schema, use_cache=True, temperature=0.0)
+    r4 = L.call_json("sys-9c", "user-9c", model="claude-sonnet-5",
+                      schema=cache_schema, use_cache=True, temperature=0.0)
+    check("kesh: ikkinchi bir xil chaqiruv tarmoqqa chiqmaydi",
+          hit_count["n"] == 1 and r4.cached and not r3.cached)
+finally:
+    L._call_anthropic = _orig_call_anthropic
+    L._call_gemini = _orig_call_gemini
+    C.LLM_PROVIDER = _orig_provider
+    for k in _written_keys:
+        p = _Path(C.CACHE_DIR) / f"{k}.json"
+        if p.exists():
+            p.unlink()
+
 # ============================================================
 print(f"\n{'=' * 50}")
 print(f"  O'TDI: {PASS}   O'TMADI: {FAIL}")

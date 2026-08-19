@@ -13,7 +13,7 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from config import CACHE_DIR, PRICING
+import config
 
 
 @dataclass
@@ -28,7 +28,7 @@ class LLMResult:
 
     @property
     def cost_usd(self) -> float:
-        p = PRICING.get(self.model)
+        p = config.PRICING.get(self.model)
         if not p:
             return 0.0
         return (self.input_tokens * p["in"] + self.output_tokens * p["out"]) / 1_000_000
@@ -66,7 +66,7 @@ def _cache_key(system: str, user: str, model: str, schema: dict | None) -> str:
 
 
 def _cache_read(key: str) -> dict | None:
-    p = Path(CACHE_DIR) / f"{key}.json"
+    p = Path(config.CACHE_DIR) / f"{key}.json"
     if p.exists():
         try:
             return json.loads(p.read_text())
@@ -76,8 +76,8 @@ def _cache_read(key: str) -> dict | None:
 
 
 def _cache_write(key: str, payload: dict) -> None:
-    Path(CACHE_DIR).mkdir(parents=True, exist_ok=True)
-    (Path(CACHE_DIR) / f"{key}.json").write_text(json.dumps(payload))
+    Path(config.CACHE_DIR).mkdir(parents=True, exist_ok=True)
+    (Path(config.CACHE_DIR) / f"{key}.json").write_text(json.dumps(payload))
 
 
 def _strip_fences(text: str) -> str:
@@ -108,15 +108,87 @@ def _extract_json(text: str) -> dict:
     raise ValueError(f"JSON to'liq emas: {text[:200]!r}")
 
 
-_client = None
+_anthropic_client = None
+_gemini_client = None
 
 
-def _get_client():
-    global _client
-    if _client is None:
+def _get_anthropic_client():
+    global _anthropic_client
+    if _anthropic_client is None:
         from anthropic import Anthropic          # lazy import
-        _client = Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
-    return _client
+        _anthropic_client = Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+    return _anthropic_client
+
+
+def _get_gemini_client():
+    global _gemini_client
+    if _gemini_client is None:
+        from google import genai                 # lazy import
+        _gemini_client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+    return _gemini_client
+
+
+def _call_anthropic(system: str, user: str, model: str, schema: dict | None,
+                     max_tokens: int, temperature: float) -> tuple[dict, int, int, str]:
+    """Anthropic tool-use orqali JSON majburlaydi. Qaytaradi:
+    (data, input_tokens, output_tokens, raw_text)."""
+    tools = None
+    tool_choice = None
+    if schema:
+        # Tool-use = ishonchli strukturaviy chiqish. JSON so'rashdan ancha barqaror.
+        tools = [{"name": "submit", "description": "Natijani qaytaring",
+                  "input_schema": schema}]
+        tool_choice = {"type": "tool", "name": "submit"}
+
+    kwargs = dict(model=model, max_tokens=max_tokens, temperature=temperature,
+                  system=system, messages=[{"role": "user", "content": user}])
+    if tools:
+        kwargs["tools"] = tools
+        kwargs["tool_choice"] = tool_choice
+
+    resp = _get_anthropic_client().messages.create(**kwargs)
+
+    data, raw = None, ""
+    for block in resp.content:
+        if getattr(block, "type", None) == "tool_use":
+            data = block.input
+            raw = json.dumps(block.input)
+            break
+        if getattr(block, "type", None) == "text":
+            raw += block.text
+    if data is None:
+        data = _extract_json(raw)
+
+    return data, resp.usage.input_tokens, resp.usage.output_tokens, raw
+
+
+def _call_gemini(system: str, user: str, model: str, schema: dict | None,
+                  max_tokens: int, temperature: float) -> tuple[dict, int, int, str]:
+    """Gemini response_json_schema orqali JSON majburlaydi. Qaytaradi:
+    (data, input_tokens, output_tokens, raw_text)."""
+    from google.genai import types                # lazy import
+
+    cfg_kwargs = dict(system_instruction=system, temperature=temperature,
+                       max_output_tokens=max_tokens)
+    if schema:
+        # response_json_schema — haqiqiy JSON Schema (type/properties/items/
+        # enum/required/maxItems) qabul qiladi, response_schema (Google'ning
+        # OpenAPI-subset Schema turi)dan farqli. Bizning CRITERION_SCHEMA/
+        # ANNOTATE_SCHEMA standart JSON Schema, shuning uchun o'zgarishsiz mos.
+        cfg_kwargs["response_mime_type"] = "application/json"
+        cfg_kwargs["response_json_schema"] = schema
+
+    resp = _get_gemini_client().models.generate_content(
+        model=model, contents=user,
+        config=types.GenerateContentConfig(**cfg_kwargs))
+
+    raw = resp.text or ""
+    data = _extract_json(raw)          # mavjud bardoshli parser qayta ishlatiladi
+
+    usage = resp.usage_metadata
+    in_tok = getattr(usage, "prompt_token_count", 0) or 0
+    out_tok = getattr(usage, "candidates_token_count", 0) or 0
+    return data, in_tok, out_tok, raw
 
 
 def call_json(
@@ -139,43 +211,20 @@ def call_json(
             TRACKER.add(r)
             return r
 
-    tools = None
-    tool_choice = None
-    if schema:
-        # Tool-use = ishonchli strukturaviy chiqish. JSON so'rashdan ancha barqaror.
-        tools = [{"name": "submit", "description": "Natijani qaytaring",
-                  "input_schema": schema}]
-        tool_choice = {"type": "tool", "name": "submit"}
-
     last_err: Exception | None = None
     for attempt in range(max_retries):
         try:
             t0 = time.time()
-            kwargs = dict(model=model, max_tokens=max_tokens,
-                          temperature=temperature,
-                          system=system,
-                          messages=[{"role": "user", "content": user}])
-            if tools:
-                kwargs["tools"] = tools
-                kwargs["tool_choice"] = tool_choice
-
-            resp = _get_client().messages.create(**kwargs)
+            if config.LLM_PROVIDER == "gemini":
+                data, in_tok, out_tok, raw = _call_gemini(
+                    system, user, model, schema, max_tokens, temperature)
+            else:
+                data, in_tok, out_tok, raw = _call_anthropic(
+                    system, user, model, schema, max_tokens, temperature)
             latency = int((time.time() - t0) * 1000)
 
-            data, raw = None, ""
-            for block in resp.content:
-                if getattr(block, "type", None) == "tool_use":
-                    data = block.input
-                    raw = json.dumps(block.input)
-                    break
-                if getattr(block, "type", None) == "text":
-                    raw += block.text
-            if data is None:
-                data = _extract_json(raw)
-
             r = LLMResult(data=data, model=model,
-                          input_tokens=resp.usage.input_tokens,
-                          output_tokens=resp.usage.output_tokens,
+                          input_tokens=in_tok, output_tokens=out_tok,
                           latency_ms=latency, raw_text=raw)
             if use_cache and temperature == 0.0:
                 _cache_write(key, {"data": data, "raw": raw})

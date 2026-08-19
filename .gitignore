@@ -14,6 +14,12 @@ venv/
 data/*.json
 !data/*.example.json
 
-# API kalitlari / mahalliy sozlamalar
+# API kalitlari / mahalliy sozlamalar (.env.example bundan mustasno — u shablon,
+# sirlar emas, repo'da bo'lishi kerak)
 .env
 .env.*
+!.env.example
+
+# Strategiya/moliya/marketing hujjatlari — mahalliy, repo public bo'lgani uchun
+# hech qachon push qilinmasin
+docs/
